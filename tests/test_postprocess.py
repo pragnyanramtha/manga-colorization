@@ -1,7 +1,7 @@
 # tests/test_postprocess.py
 import numpy as np
 import cv2
-from src.postprocess import harmonize_colors
+from src.postprocess import harmonize_colors, denoise_image
 
 
 def _make_solid_image(bgr_color, shape=(100, 100)):
@@ -64,4 +64,33 @@ def test_harmonize_output_dtype_is_uint8():
 
     result = harmonize_colors(source, reference)
 
+    assert result.dtype == np.uint8
+
+
+# --- denoise_image tests ---
+
+
+def test_denoise_grayscale_reduces_noise():
+    """Denoising a noisy grayscale image should reduce noise."""
+    clean = np.ones((100, 100), dtype=np.uint8) * 128
+    noisy = np.clip(clean.astype(np.int16) + np.random.randint(-40, 40, clean.shape), 0, 255).astype(np.uint8)
+
+    denoised = denoise_image(noisy, strength=25)
+
+    noise_before = np.abs(noisy.astype(float) - clean.astype(float)).mean()
+    noise_after = np.abs(denoised.astype(float) - clean.astype(float)).mean()
+    assert noise_after < noise_before
+
+
+def test_denoise_preserves_shape_grayscale():
+    img = np.ones((80, 120), dtype=np.uint8) * 128
+    result = denoise_image(img)
+    assert result.shape == img.shape
+    assert result.dtype == np.uint8
+
+
+def test_denoise_preserves_shape_color():
+    img = _make_solid_image((100, 150, 200), shape=(80, 120))
+    result = denoise_image(img)
+    assert result.shape == img.shape
     assert result.dtype == np.uint8

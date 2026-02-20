@@ -1,8 +1,26 @@
-"""Color consistency post-processing via LAB histogram matching."""
+"""Post-processing utilities: denoising and color consistency."""
 
 import cv2
 import numpy as np
 from skimage.exposure import match_histograms
+
+
+def denoise_image(image: np.ndarray, strength: int = 25) -> np.ndarray:
+    """Denoise a manga image using non-local means filtering.
+
+    Useful for scanned manga with compression artifacts or paper grain.
+    Not recommended for clean digital sources — will soften fine lines.
+
+    Args:
+        image: Grayscale or BGR uint8 image
+        strength: Filter strength (higher = more denoising, default 25)
+
+    Returns:
+        Denoised uint8 image (same shape/channels as input)
+    """
+    if image.ndim == 2:
+        return cv2.fastNlMeansDenoising(image, None, h=strength)
+    return cv2.fastNlMeansDenoisingColored(image, None, h=strength, hColor=strength)
 
 
 def harmonize_colors(source_img: np.ndarray, reference_img: np.ndarray) -> np.ndarray:

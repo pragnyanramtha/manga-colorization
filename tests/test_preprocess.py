@@ -100,3 +100,75 @@ def test_screentones_has_dot_pattern():
     dark_pixel_ratio_light = np.sum(tones_light < 128) / tones_light.size
 
     assert dark_pixel_ratio_dark > dark_pixel_ratio_light
+
+
+from src.preprocess import add_paper_texture, create_synthetic_manga, process_directory
+import tempfile
+import os
+
+
+def test_paper_texture_adds_noise():
+    img = np.ones((100, 100), dtype=np.uint8) * 128
+    textured = add_paper_texture(img, intensity=0.1)
+
+    # Should not be identical (noise added)
+    assert not np.array_equal(img, textured)
+
+    # But should be close (subtle noise)
+    # With intensity=0.1, noise std=25.5; atol must cover ~4 sigma for reliability
+    np.testing.assert_allclose(
+        textured.astype(float), img.astype(float), atol=105
+    )
+
+
+def test_paper_texture_output_is_uint8():
+    img = np.ones((100, 100), dtype=np.uint8) * 128
+    textured = add_paper_texture(img)
+    assert textured.dtype == np.uint8
+
+
+def test_create_synthetic_manga_full_pipeline():
+    img = _make_test_image_with_edges()
+    result = create_synthetic_manga(img)
+
+    assert result.ndim == 2
+    assert result.shape == img.shape[:2]
+    assert result.dtype == np.uint8
+
+
+def test_process_directory():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_dir = os.path.join(tmpdir, "input")
+        bw_dir = os.path.join(tmpdir, "bw")
+        color_dir = os.path.join(tmpdir, "color")
+        os.makedirs(input_dir)
+
+        # Create two test images
+        for name in ["test1.png", "test2.png"]:
+            img = _make_test_image_with_edges()
+            cv2.imwrite(os.path.join(input_dir, name), img)
+
+        # Also create a non-image file that should be skipped
+        with open(os.path.join(input_dir, "readme.txt"), "w") as f:
+            f.write("not an image")
+
+        count = process_directory(input_dir, bw_dir, color_dir)
+
+        assert count == 2
+        assert os.path.exists(os.path.join(bw_dir, "test1.png"))
+        assert os.path.exists(os.path.join(bw_dir, "test2.png"))
+        assert os.path.exists(os.path.join(color_dir, "test1.png"))
+        assert os.path.exists(os.path.join(color_dir, "test2.png"))
+        assert not os.path.exists(os.path.join(bw_dir, "readme.txt"))
+
+
+def test_process_directory_empty():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_dir = os.path.join(tmpdir, "input")
+        os.makedirs(input_dir)
+        count = process_directory(
+            input_dir,
+            os.path.join(tmpdir, "bw"),
+            os.path.join(tmpdir, "color"),
+        )
+        assert count == 0

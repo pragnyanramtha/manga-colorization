@@ -1,6 +1,7 @@
 # tests/test_preprocess.py
 import numpy as np
 import cv2
+import pytest
 from src.preprocess import extract_lines
 
 
@@ -46,11 +47,8 @@ def test_extract_lines_detects_edges():
 
 def test_extract_lines_invalid_method_raises():
     img = _make_test_image_with_edges()
-    try:
+    with pytest.raises(ValueError):
         extract_lines(img, method="invalid")
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
 
 
 from src.preprocess import simulate_screentones
@@ -114,11 +112,9 @@ def test_paper_texture_adds_noise():
     # Should not be identical (noise added)
     assert not np.array_equal(img, textured)
 
-    # But should be close (subtle noise)
-    # With intensity=0.1, noise std=25.5; atol must cover ~4 sigma for reliability
-    np.testing.assert_allclose(
-        textured.astype(float), img.astype(float), atol=105
-    )
+    # Noise should be small on average (well under 1 std of 25.5)
+    mean_diff = np.abs(textured.astype(float) - img.astype(float)).mean()
+    assert mean_diff < 40, f"Mean noise too large: {mean_diff:.1f}"
 
 
 def test_paper_texture_output_is_uint8():

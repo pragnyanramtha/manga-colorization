@@ -8,3 +8,18 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Models (large files)
+models/
+
+# Dataset outputs
+dataset/
+
+# Generated outputs
+output/
+*.png
+*.jpg
+*.jpeg
+
+# Jupyter
+.ipynb_checkpoints/

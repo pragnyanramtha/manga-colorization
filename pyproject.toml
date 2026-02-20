@@ -23,4 +23,4 @@ dev = [
 ]
 
 [project.scripts]
-manga-colorize = "main:main"
+manga-colorize = "colorize:main"
